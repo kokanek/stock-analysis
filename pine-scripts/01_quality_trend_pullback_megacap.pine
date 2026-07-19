@@ -1,0 +1,121 @@
+//@version=6
+// ─────────────────────────────────────────────────────────────────────────────
+//  QUALITY TREND PULLBACK — Mega-Cap Compounders (MSFT, AAPL)
+//
+//  Bucket thesis (July 2026):
+//  MSFT and AAPL are low-drama, institutionally-owned compounders. They grind
+//  higher in persistent uptrends, and their dips get bought because passive
+//  flows and buybacks provide a structural bid. With the Fed hawkish and the
+//  index stretched, chasing strength in these names is poor R/R — but buying
+//  orderly pullbacks *inside* a confirmed uptrend has historically been the
+//  highest-expectancy swing approach for this bucket.
+//
+//  Logic:
+//    1. Regime filter  : price above the 200-day SMA, 50 > 200 stack intact.
+//    2. Setup          : RSI(14) dips below a pullback threshold (default 45)
+//                        within the last N bars — an orderly reset, not a crash.
+//    3. Trigger        : RSI back above the threshold AND close takes out the
+//                        prior bar's high (buyers back in control).
+//    4. Initial stop   : entry − 2.5 × ATR(14).
+//    5. Exit           : close below the 50-day EMA (armed only after price
+//                        has traded above it in the position), or the ATR stop,
+//                        or an optional R-multiple profit target (off by default
+//                        — let compounders compound).
+//
+//  Designed for the DAILY timeframe. Long-only by design.
+// ─────────────────────────────────────────────────────────────────────────────
+strategy("Quality Trend Pullback [MSFT/AAPL]",
+     shorttitle="QTP",
+     overlay=true,
+     initial_capital=100000,
+     default_qty_type=strategy.percent_of_equity,
+     default_qty_value=95,
+     commission_type=strategy.commission.percent,
+     commission_value=0.03,
+     slippage=2,
+     pyramiding=0,
+     process_orders_on_close=true)
+
+// ───────────────────────────── Backtest window ──────────────────────────────
+grpW = "Backtest Window"
+i_useWindow  = input.bool(true, "Limit backtest to recent window", group=grpW,
+     tooltip="Restricts entries to the last N calendar days so results reflect the CURRENT regime (hawkish Fed, geopolitical premium, late-cycle AI trade) instead of being flattered by the 2023–2025 melt-up.")
+i_windowDays = input.int(365, "Window length (calendar days)", minval=30, maxval=1825, group=grpW,
+     tooltip="Default 365 = last 1 year.")
+inWindow = not i_useWindow or time >= timenow - i_windowDays * 86400000
+
+// ───────────────────────────── Trend filter ─────────────────────────────────
+grpT = "Trend Filter"
+i_trendLen     = input.int(200, "Long-term trend SMA", minval=50, maxval=400, group=grpT,
+     tooltip="No longs unless price is above this. 200-day is the institutional line in the sand for mega-caps.")
+i_midLen       = input.int(50, "Intermediate SMA", minval=10, maxval=150, group=grpT)
+i_requireStack = input.bool(true, "Require intermediate SMA above long-term SMA", group=grpT,
+     tooltip="Demands a healthy 50>200 stack, filtering out early/fragile recoveries.")
+
+smaTrend = ta.sma(close, i_trendLen)
+smaMid   = ta.sma(close, i_midLen)
+uptrend  = close > smaTrend and (not i_requireStack or smaMid > smaTrend)
+
+// ───────────────────────────── Pullback entry ───────────────────────────────
+grpE = "Pullback Entry"
+i_rsiLen       = input.int(14, "RSI length", minval=2, maxval=30, group=grpE)
+i_rsiPullback  = input.float(45.0, "RSI pullback threshold", minval=20, maxval=60, step=1, group=grpE,
+     tooltip="RSI must dip below this to qualify as a pullback. 45 catches shallow dips in strong names; lower it toward 35 in choppier tape.")
+i_pullbackBars = input.int(10, "Pullback valid for (bars)", minval=2, maxval=30, group=grpE,
+     tooltip="The RSI dip must have happened within this many bars for the setup to stay 'fresh'.")
+i_confirmBreak = input.bool(true, "Require close above prior bar's high", group=grpE,
+     tooltip="Waits for a resumption bar instead of catching the falling knife.")
+
+rsi = ta.rsi(close, i_rsiLen)
+barsSinceDip = ta.barssince(rsi < i_rsiPullback)
+freshPullback = not na(barsSinceDip) and barsSinceDip >= 1 and barsSinceDip <= i_pullbackBars
+resumption = not i_confirmBreak or close > high[1]
+longSignal = uptrend and freshPullback and rsi > i_rsiPullback and resumption
+
+// ───────────────────────────── Exits & risk ─────────────────────────────────
+grpX = "Exits & Risk"
+i_atrLen      = input.int(14, "ATR length", minval=5, maxval=30, group=grpX)
+i_stopAtr     = input.float(2.5, "Initial stop (ATR multiple)", minval=1.0, maxval=5.0, step=0.25, group=grpX,
+     tooltip="Wide-ish on purpose: mega-caps rarely need tight stops, and tight stops bleed you in normal noise.")
+i_useTrendExit = input.bool(true, "Exit on close below exit EMA", group=grpX)
+i_exitEmaLen   = input.int(50, "Exit EMA length", minval=10, maxval=150, group=grpX,
+     tooltip="The 'let it ride until the trend actually cracks' exit.")
+i_useTP  = input.bool(false, "Use fixed profit target", group=grpX,
+     tooltip="Off by default — this bucket rewards holding winners. Turn on if you want mechanical R-multiple exits in a hawkish, capped-upside tape.")
+i_tpR    = input.float(3.0, "Profit target (R multiple)", minval=1.0, maxval=8.0, step=0.5, group=grpX)
+
+atr     = ta.atr(i_atrLen)
+exitEma = ta.ema(close, i_exitEmaLen)
+
+var float entryStop  = na
+var bool  trailArmed = false
+
+if longSignal and strategy.position_size == 0 and inWindow
+    strategy.entry("Long", strategy.long)
+    entryStop  := close - i_stopAtr * atr
+    trailArmed := false
+
+if strategy.position_size > 0
+    riskPerShare = strategy.position_avg_price - entryStop
+    tpPrice = i_useTP ? strategy.position_avg_price + i_tpR * riskPerShare : na
+    strategy.exit("Stop/TP", from_entry="Long", stop=entryStop, limit=tpPrice)
+    if close > exitEma
+        trailArmed := true
+    if i_useTrendExit and trailArmed and close < exitEma
+        strategy.close("Long", comment="Trend break")
+else
+    entryStop  := na
+    trailArmed := false
+
+// ───────────────────────────── Display ──────────────────────────────────────
+grpD = "Display"
+i_showBg = input.bool(true, "Shade background when regime is bullish", group=grpD)
+
+plot(smaTrend, "Trend SMA", color=color.new(color.orange, 0), linewidth=2)
+plot(smaMid,   "Mid SMA",   color=color.new(color.teal, 30))
+plot(exitEma,  "Exit EMA",  color=color.new(color.fuchsia, 40), linewidth=1)
+plot(strategy.position_size > 0 ? entryStop : na, "Stop", color=color.red, style=plot.style_linebr)
+plotshape(longSignal and strategy.position_size == 0 and inWindow, "Entry setup",
+     style=shape.triangleup, location=location.belowbar, color=color.lime, size=size.small)
+bgcolor(i_showBg and uptrend ? color.new(color.teal, 94) : na)
+bgcolor(not inWindow ? color.new(color.gray, 90) : na)
