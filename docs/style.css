@@ -1,0 +1,149 @@
+/* ── Pine Strategy Lab — shared stylesheet ─────────────────────────────── */
+:root {
+  --bg: #0d1117;
+  --bg-soft: #161b22;
+  --bg-card: #1b2129;
+  --border: #2d333b;
+  --text: #e6edf3;
+  --text-dim: #9da7b3;
+  --accent: #4aa3ff;
+  --quality: #4aa3ff;   /* group 1 — mega-cap compounders */
+  --momentum: #ff9f43;  /* group 2 — AI semis */
+  --reversion: #2ecc9a; /* group 3 — platforms */
+  --danger: #ff6b6b;
+  --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Nav ── */
+nav {
+  position: sticky; top: 0; z-index: 10;
+  background: rgba(13, 17, 23, 0.92);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--border);
+  padding: 0.7rem 1.2rem;
+  display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; align-items: center;
+}
+nav .brand { font-weight: 700; letter-spacing: 0.02em; color: var(--text); margin-right: auto; }
+nav .brand span { color: var(--accent); }
+nav a.navlink { color: var(--text-dim); font-size: 0.92rem; padding: 0.2rem 0.1rem; }
+nav a.navlink:hover, nav a.navlink.active { color: var(--text); text-decoration: none; }
+nav a.navlink.active { border-bottom: 2px solid var(--accent); }
+
+/* ── Layout ── */
+main { max-width: 980px; margin: 0 auto; padding: 2.5rem 1.2rem 4rem; }
+header.hero { padding: 3rem 0 1.5rem; }
+h1 { font-size: 2.1rem; line-height: 1.2; margin-bottom: 0.8rem; }
+h2 { font-size: 1.45rem; margin: 2.6rem 0 0.9rem; padding-top: 0.5rem; }
+h3 { font-size: 1.12rem; margin: 1.8rem 0 0.6rem; }
+p { margin: 0.8rem 0; color: var(--text); }
+p.lead { font-size: 1.12rem; color: var(--text-dim); max-width: 46rem; }
+ul, ol { margin: 0.8rem 0 0.8rem 1.4rem; }
+li { margin: 0.35rem 0; }
+strong { color: #fff; }
+hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+.dim { color: var(--text-dim); }
+.small { font-size: 0.85rem; }
+
+/* ── Badges & tags ── */
+.tag {
+  display: inline-block; font-size: 0.75rem; font-weight: 600;
+  padding: 0.15rem 0.6rem; border-radius: 999px; letter-spacing: 0.04em;
+  border: 1px solid var(--border); color: var(--text-dim); margin-right: 0.4rem;
+}
+.tag.quality  { color: var(--quality);  border-color: var(--quality); }
+.tag.momentum { color: var(--momentum); border-color: var(--momentum); }
+.tag.reversion{ color: var(--reversion);border-color: var(--reversion); }
+.tag.warn     { color: var(--danger);   border-color: var(--danger); }
+
+/* ── Cards ── */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+.card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 1.2rem 1.3rem;
+}
+.card h3 { margin-top: 0.2rem; }
+.card.accent-quality  { border-top: 3px solid var(--quality); }
+.card.accent-momentum { border-top: 3px solid var(--momentum); }
+.card.accent-reversion{ border-top: 3px solid var(--reversion); }
+.card .tickers { font-family: var(--mono); font-size: 0.9rem; color: var(--text-dim); }
+.card a.more { display: inline-block; margin-top: 0.7rem; font-weight: 600; }
+
+/* ── Stat tiles ── */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+.stat {
+  background: var(--bg-soft); border: 1px solid var(--border);
+  border-radius: 10px; padding: 1rem 1.1rem;
+}
+.stat .k { font-size: 1.5rem; font-weight: 700; }
+.stat .l { font-size: 0.85rem; color: var(--text-dim); margin-top: 0.15rem; }
+.stat .k.up { color: var(--reversion); }
+.stat .k.down { color: var(--danger); }
+.stat .k.warn { color: var(--momentum); }
+
+/* ── Tables ── */
+.table-wrap { overflow-x: auto; margin: 1.2rem 0; border: 1px solid var(--border); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+th, td { text-align: left; padding: 0.6rem 0.9rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { background: var(--bg-soft); font-weight: 600; white-space: nowrap; }
+tr:last-child td { border-bottom: none; }
+td code, li code, p code {
+  font-family: var(--mono); font-size: 0.85em;
+  background: var(--bg-soft); border: 1px solid var(--border);
+  border-radius: 4px; padding: 0.08em 0.35em; white-space: nowrap;
+}
+
+/* ── Flow steps ── */
+.flow { counter-reset: step; margin: 1.4rem 0; display: grid; gap: 0.7rem; }
+.flow .step {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 0.9rem 1.1rem 0.9rem 3.4rem; position: relative;
+}
+.flow .step::before {
+  counter-increment: step; content: counter(step);
+  position: absolute; left: 0.9rem; top: 0.9rem;
+  width: 1.7rem; height: 1.7rem; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 0.9rem; color: #0d1117;
+  background: var(--accent);
+}
+.flow.momentum .step::before { background: var(--momentum); }
+.flow.reversion .step::before { background: var(--reversion); }
+.flow .step b { display: block; margin-bottom: 0.15rem; }
+
+/* ── Callouts ── */
+.callout {
+  border-left: 4px solid var(--accent); background: var(--bg-soft);
+  border-radius: 0 10px 10px 0; padding: 0.9rem 1.2rem; margin: 1.4rem 0;
+}
+.callout.risk { border-left-color: var(--danger); }
+.callout.note { border-left-color: var(--momentum); }
+.callout b.title { display: block; margin-bottom: 0.3rem; }
+
+/* ── Code blocks ── */
+pre {
+  background: var(--bg-soft); border: 1px solid var(--border); border-radius: 10px;
+  padding: 1rem 1.2rem; overflow-x: auto; margin: 1.2rem 0;
+  font-family: var(--mono); font-size: 0.84rem; line-height: 1.55; color: #c9d5e0;
+}
+
+/* ── Footer ── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 1.6rem 1.2rem 2.4rem; text-align: center;
+  color: var(--text-dim); font-size: 0.85rem;
+}
+footer .disclaimer { max-width: 52rem; margin: 0.6rem auto 0; }
+
+@media (max-width: 640px) {
+  h1 { font-size: 1.6rem; }
+  nav { gap: 0.3rem 0.8rem; }
+}

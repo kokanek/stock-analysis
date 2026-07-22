@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quality Trend Pullback — MSFT / AAPL | Pine Strategy Lab</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+  <a class="brand" href="index.html">Pine <span>Strategy Lab</span></a>
+  <a class="navlink" href="index.html">Home</a>
+  <a class="navlink" href="market-overview.html">Market Overview</a>
+  <a class="navlink active" href="strategy-quality-trend.html">Mega-Caps</a>
+  <a class="navlink" href="strategy-semi-momentum.html">AI Semis</a>
+  <a class="navlink" href="strategy-range-reversion.html">Platforms</a>
+</nav>
+<main>
+<header class="hero">
+  <span class="tag quality">GROUP 1 · MSFT · AAPL</span>
+  <h1>Quality Trend Pullback</h1>
+  <p class="lead">Buy orderly dips inside a confirmed uptrend, hold until the trend actually
+  cracks. Script: <code>pine-scripts/01_quality_trend_pullback_megacap.pine</code></p>
+</header>
+
+<h2>Why this bucket trades differently</h2>
+<p>
+  MSFT and AAPL are the market's ballast: enormous float, deep institutional ownership,
+  relentless buybacks, and a permanent bid from passive index flows. They almost never lead a
+  rally, and they almost never crash without weeks of deterioration first. Their charts are
+  staircases — trend, shallow pullback, trend — because every dip is met by systematic buyers
+  who <em>must</em> own them.
+</p>
+<p>
+  In the July 2026 regime this character is amplified. MSFT heads into its Jul 29 report as
+  the market's execution benchmark (anything under ~35% Azure growth reads as deceleration,
+  but consensus targets near $590 say the street still believes). AAPL is +20% YTD precisely
+  because its capital-light AI strategy — monetizing 2.3B devices instead of building data
+  centers — insulates it from the capex anxiety hammering the rest of the complex. When
+  hawkish-Fed or Iran headlines knock the index, these are the names whose dips are shallowest
+  and get bought first.
+</p>
+<div class="callout">
+  <b class="title">The edge, in one sentence</b>
+  In structurally-bid compounders, a pullback inside an intact uptrend is a discount, not a
+  warning — so the strategy buys the reset and refuses to sell until the trend itself breaks.
+</div>
+
+<h2>The rules</h2>
+<div class="flow">
+  <div class="step"><b>Regime gate — is the staircase intact?</b>
+    Price must be above the 200-day SMA <em>and</em> the 50-day must sit above the 200-day.
+    No stack, no trades. This alone keeps the strategy out of genuine bear phases.</div>
+  <div class="step"><b>Setup — an orderly reset</b>
+    RSI(14) dips below 45 at some point in the last 10 bars. That's a normal breather in a
+    strong mega-cap; RSI(14) at 30 in these names usually means something is actually wrong.</div>
+  <div class="step"><b>Trigger — buyers back in control</b>
+    RSI is back above the threshold and the bar closes above the prior bar's high. You're not
+    catching the knife; you're joining the resumption.</div>
+  <div class="step"><b>Initial protection</b>
+    Stop at entry − 2.5 × ATR(14). Deliberately wide: tight stops in low-noise names get
+    clipped by noise and then watch the move leave without you.</div>
+  <div class="step"><b>Exit — only when the trend cracks</b>
+    Close below the 50-day EMA (armed only after price has traded above it during the
+    position), or the ATR stop. Optional R-multiple profit target, OFF by default — the whole
+    point of this bucket is letting winners compound for weeks to months.</div>
+</div>
+
+<h2>Parameters</h2>
+<div class="table-wrap">
+<table>
+  <tr><th>Input</th><th>Default</th><th>Range</th><th>Why this default</th></tr>
+  <tr><td>Limit backtest window</td><td>ON</td><td>on/off</td><td>Results should reflect the current hawkish-Fed regime, not the 2023–25 melt-up</td></tr>
+  <tr><td>Window length</td><td>365 days</td><td>30–1825</td><td>The requested 1-year evaluation window</td></tr>
+  <tr><td>Long-term trend SMA</td><td>200</td><td>50–400</td><td>The institutional line in the sand for mega-caps</td></tr>
+  <tr><td>Intermediate SMA</td><td>50</td><td>10–150</td><td>Confirms the trend stack is healthy, not just recovering</td></tr>
+  <tr><td>Require SMA stack</td><td>ON</td><td>on/off</td><td>Filters fragile early recoveries where pullbacks fail more often</td></tr>
+  <tr><td>RSI length</td><td>14</td><td>2–30</td><td>Standard momentum reset gauge at daily resolution</td></tr>
+  <tr><td>RSI pullback threshold</td><td>45</td><td>20–60</td><td>Mega-cap dips are shallow; waiting for RSI 30 means missing most setups. Lower toward 35 in choppier tape</td></tr>
+  <tr><td>Pullback valid for</td><td>10 bars</td><td>2–30</td><td>Keeps the setup fresh — a reset from a month ago says nothing about today</td></tr>
+  <tr><td>Confirm above prior high</td><td>ON</td><td>on/off</td><td>Cheap insurance against buying a pullback that's still falling</td></tr>
+  <tr><td>Initial stop</td><td>2.5 × ATR</td><td>1.0–5.0</td><td>Wide enough to survive index-level air pockets that don't change the stock's trend</td></tr>
+  <tr><td>Exit EMA</td><td>50</td><td>10–150</td><td>The "trend actually cracked" line; 21 turns this into a much faster swing system</td></tr>
+  <tr><td>Profit target</td><td>OFF (3R)</td><td>1–8R</td><td>Compounders reward holding; enable if you want mechanical banking in a capped-upside tape</td></tr>
+</table>
+</div>
+
+<h2>Tuning guidance for this regime</h2>
+<ul>
+  <li><strong>If the Fed actually hikes in September</strong> and the index corrects, the 200-day
+      gate will start rejecting entries on its own. Don't override it.</li>
+  <li><strong>Around the Jul 29–30 earnings prints</strong>, consider standing aside on new
+      entries for 2–3 days. The strategy has no earnings calendar — that judgment stays manual.</li>
+  <li><strong>Want more trades?</strong> Lower the RSI threshold to 40 and the exit EMA to 21.
+      Expect more churn and smaller average winners.</li>
+  <li><strong>Want fewer, higher-quality trades?</strong> Raise the pullback threshold's strictness
+      by requiring RSI &lt; 40 and keep everything else default.</li>
+</ul>
+
+<h2>How it fails, and what protects you</h2>
+<div class="callout risk">
+  <b class="title">Failure modes</b>
+  <ul>
+    <li><strong>Regime break:</strong> a hawkish-pivot bear market turns "buy the dip" into
+        "catch every knife." Protection: the 200-day gate stops issuing entries, and the
+        50-EMA exit gets you out of open positions early in the decline.</li>
+    <li><strong>Earnings gap through the stop:</strong> an Azure miss could gap MSFT below the
+        ATR stop. Protection is partial (stops fill at the open, not the stop price) — which is
+        why this bucket uses moderate default sizing rather than max leverage.</li>
+    <li><strong>Slow bleed:</strong> a months-long distribution that never triggers the pullback
+        reset. The strategy simply stays flat — being in cash is a position.</li>
+  </ul>
+</div>
+<p class="dim small">Companion pages: <a href="strategy-semi-momentum.html">AI Semis — Momentum Breakout</a> ·
+<a href="strategy-range-reversion.html">Platforms — Range Reversion</a> ·
+<a href="market-overview.html">Market Overview</a></p>
+</main>
+<footer>
+  Pine Strategy Lab · market context as of July 19, 2026
+  <div class="disclaimer">Educational content, not financial advice.</div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,132 @@
+//@version=6
+// ─────────────────────────────────────────────────────────────────────────────
+//  HIGH-BETA MOMENTUM BREAKOUT — AI Semiconductors (NVDA, AMD, MU)
+//
+//  Bucket thesis (July 2026):
+//  The AI-semi complex is the highest-beta corner of the market: AMD +~150%
+//  YTD, MU riding a memory super-cycle, NVDA consolidating after two monster
+//  years. These names move in violent, news-driven impulses (hyperscaler capex
+//  headlines, export controls, Taiwan risk) and just took a hard mid-July hit
+//  on capex-cut fears. You don't buy dips blindly here — you buy CONFIRMED
+//  strength, size the position off volatility, take partial profits fast, and
+//  trail the rest with a ratcheting stop. When the regime breaks, you're out.
+//
+//  Logic:
+//    1. Regime filter  : price above the 100-day SMA + optional market filter
+//                        (SPY above its own 50-day) so you don't buy breakouts
+//                        into an index-level Fed/geopolitical air pocket.
+//    2. Trigger        : close breaks the N-day Donchian high (default 20)
+//                        on volume ≥ 1.2 × its 20-day average.
+//    3. Position size  : risk-based — a fixed % of equity (default 1%) divided
+//                        by the ATR stop distance, capped at a max % of equity.
+//    4. Initial stop   : entry − 2.0 × ATR(14).
+//    5. Scale-out      : sell 50% at +2R (optional, ON by default — in a tape
+//                        where semis can give back a week of gains in a day,
+//                        banking the first leg pays).
+//    6. Trail          : chandelier stop (22-bar high − 3 × ATR), ratchets up
+//                        only. Regime break (close < 100-day SMA) force-exits.
+//
+//  Designed for the DAILY timeframe. Long-only by design.
+// ─────────────────────────────────────────────────────────────────────────────
+strategy("High-Beta Momentum Breakout [NVDA/AMD/MU]",
+     shorttitle="SMB",
+     overlay=true,
+     initial_capital=100000,
+     default_qty_type=strategy.fixed,
+     default_qty_value=1,
+     commission_type=strategy.commission.percent,
+     commission_value=0.03,
+     slippage=2,
+     pyramiding=0,
+     process_orders_on_close=true)
+
+// ───────────────────────────── Backtest window ──────────────────────────────
+grpW = "Backtest Window"
+i_useWindow  = input.bool(true, "Limit backtest to recent window", group=grpW,
+     tooltip="Restricts entries to the last N calendar days. Semis' character changes fast (memory cycles, export-control shocks); a 1-year window keeps the stats honest for the CURRENT regime.")
+i_windowDays = input.int(365, "Window length (calendar days)", minval=30, maxval=1825, group=grpW)
+inWindow = not i_useWindow or time >= timenow - i_windowDays * 86400000
+
+// ───────────────────────────── Regime filters ───────────────────────────────
+grpR = "Regime Filters"
+i_regimeLen    = input.int(100, "Stock regime SMA", minval=20, maxval=250, group=grpR,
+     tooltip="100-day: fast enough to re-engage after semi corrections, slow enough to keep you out of downtrends.")
+i_useMktFilter = input.bool(true, "Use market filter", group=grpR,
+     tooltip="Blocks new breakout entries when the broad market is below its own moving average — breakouts fail at a much higher rate in weak tape.")
+i_mktSymbol    = input.symbol("AMEX:SPY", "Market filter symbol", group=grpR)
+i_mktLen       = input.int(50, "Market filter SMA", minval=20, maxval=200, group=grpR)
+
+stockRegimeOk = close > ta.sma(close, i_regimeLen)
+mktOk = not i_useMktFilter or request.security(i_mktSymbol, timeframe.period,
+     close > ta.sma(close, i_mktLen), lookahead=barmerge.lookahead_off)
+
+// ───────────────────────────── Breakout trigger ─────────────────────────────
+grpB = "Breakout Trigger"
+i_breakLen   = input.int(20, "Donchian breakout length", minval=5, maxval=100, group=grpB,
+     tooltip="Close must exceed the highest high of the prior N bars. 20 ≈ one trading month — the classic momentum breakout window.")
+i_volConfirm = input.bool(true, "Require volume confirmation", group=grpB)
+i_volMult    = input.float(1.2, "Volume multiple of 20-day average", minval=1.0, maxval=3.0, step=0.1, group=grpB,
+     tooltip="Breakouts without participation are the ones that get faded. 1.2× is a light-touch filter; raise toward 1.5× to be stricter.")
+
+donchianHigh = ta.highest(high, i_breakLen)[1]
+volOk = not i_volConfirm or volume > ta.sma(volume, 20) * i_volMult
+breakout = close > donchianHigh and volOk
+longSignal = breakout and stockRegimeOk and mktOk
+
+// ───────────────────────────── Risk & sizing ────────────────────────────────
+grpS = "Position Sizing"
+i_riskPct   = input.float(1.0, "Risk per trade (% of equity)", minval=0.25, maxval=5.0, step=0.25, group=grpS,
+     tooltip="Equity risked if the initial stop is hit. 1% is the sweet spot for a bucket where 3 names can all gap down together on one headline.")
+i_maxPosPct = input.float(25.0, "Max position size (% of equity)", minval=5.0, maxval=100.0, step=5.0, group=grpS,
+     tooltip="Caps notional exposure so low-volatility periods can't produce oversized positions.")
+
+grpX = "Exits"
+i_atrLen    = input.int(14, "ATR length", minval=5, maxval=30, group=grpX)
+i_stopAtr   = input.float(2.0, "Initial stop (ATR multiple)", minval=1.0, maxval=4.0, step=0.25, group=grpX)
+i_useScale  = input.bool(true, "Scale out 50% at profit target", group=grpX)
+i_tpR       = input.float(2.0, "Scale-out target (R multiple)", minval=1.0, maxval=6.0, step=0.5, group=grpX)
+i_chandLen  = input.int(22, "Chandelier lookback (bars)", minval=10, maxval=60, group=grpX)
+i_chandMult = input.float(3.0, "Chandelier ATR multiple", minval=1.5, maxval=5.0, step=0.25, group=grpX,
+     tooltip="Trailing stop = highest high of lookback − this many ATRs. Ratchets up only.")
+i_regimeExit = input.bool(true, "Force exit on regime break", group=grpX,
+     tooltip="Closes the position if price closes back below the stock regime SMA — the 'the trade is wrong' escape hatch.")
+
+atr = ta.atr(i_atrLen)
+chandelier = ta.highest(high, i_chandLen) - i_chandMult * atr
+
+var float trailStop = na
+var float initRisk  = na
+
+if longSignal and strategy.position_size == 0 and inWindow
+    stopDist = i_stopAtr * atr
+    riskQty  = math.floor(strategy.equity * i_riskPct / 100 / stopDist)
+    capQty   = math.floor(strategy.equity * i_maxPosPct / 100 / close)
+    qty      = math.max(1, math.min(riskQty, capQty))
+    strategy.entry("Long", strategy.long, qty=qty)
+    trailStop := close - stopDist
+    initRisk  := stopDist
+
+if strategy.position_size > 0
+    trailStop := math.max(trailStop, chandelier)
+    tpPrice = strategy.position_avg_price + i_tpR * initRisk
+    if i_useScale
+        strategy.exit("TP1", from_entry="Long", limit=tpPrice, qty_percent=50)
+    strategy.exit("Trail", from_entry="Long", stop=trailStop)
+    if i_regimeExit and close < ta.sma(close, i_regimeLen)
+        strategy.close("Long", comment="Regime break")
+else
+    trailStop := na
+    initRisk  := na
+
+// ───────────────────────────── Display ──────────────────────────────────────
+grpD = "Display"
+i_showBg = input.bool(true, "Shade background by regime", group=grpD)
+
+plot(donchianHigh, "Donchian high", color=color.new(color.aqua, 40))
+plot(ta.sma(close, i_regimeLen), "Regime SMA", color=color.new(color.orange, 0), linewidth=2)
+plot(strategy.position_size > 0 ? trailStop : na, "Trail stop", color=color.red, style=plot.style_linebr, linewidth=2)
+plotshape(longSignal and strategy.position_size == 0 and inWindow, "Breakout entry",
+     style=shape.triangleup, location=location.belowbar, color=color.lime, size=size.small)
+bgcolor(i_showBg and stockRegimeOk and mktOk ? color.new(color.teal, 94) : na)
+bgcolor(i_showBg and not mktOk ? color.new(color.red, 92) : na)
+bgcolor(not inWindow ? color.new(color.gray, 90) : na)
