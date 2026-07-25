@@ -56,7 +56,10 @@ i_useMktFilter = input.bool(true, "Use market filter", group=grpR,
 i_mktSymbol    = input.symbol("AMEX:SPY", "Market filter symbol", group=grpR)
 i_mktLen       = input.int(50, "Market filter SMA", minval=20, maxval=200, group=grpR)
 
-stockRegimeOk = close > ta.sma(close, i_regimeLen)
+// Computed once at global scope: ta.* functions must be evaluated on every bar,
+// so this SMA is reused by the entry gate, the regime-break exit and the plot.
+regimeSma     = ta.sma(close, i_regimeLen)
+stockRegimeOk = close > regimeSma
 mktOk = not i_useMktFilter or request.security(i_mktSymbol, timeframe.period,
      close > ta.sma(close, i_mktLen), lookahead=barmerge.lookahead_off)
 
@@ -112,7 +115,7 @@ if strategy.position_size > 0
     if i_useScale
         strategy.exit("TP1", from_entry="Long", limit=tpPrice, qty_percent=50)
     strategy.exit("Trail", from_entry="Long", stop=trailStop)
-    if i_regimeExit and close < ta.sma(close, i_regimeLen)
+    if i_regimeExit and close < regimeSma
         strategy.close("Long", comment="Regime break")
 else
     trailStop := na
@@ -123,7 +126,7 @@ grpD = "Display"
 i_showBg = input.bool(true, "Shade background by regime", group=grpD)
 
 plot(donchianHigh, "Donchian high", color=color.new(color.aqua, 40))
-plot(ta.sma(close, i_regimeLen), "Regime SMA", color=color.new(color.orange, 0), linewidth=2)
+plot(regimeSma, "Regime SMA", color=color.new(color.orange, 0), linewidth=2)
 plot(strategy.position_size > 0 ? trailStop : na, "Trail stop", color=color.red, style=plot.style_linebr, linewidth=2)
 plotshape(longSignal and strategy.position_size == 0 and inWindow, "Breakout entry",
      style=shape.triangleup, location=location.belowbar, color=color.lime, size=size.small)
