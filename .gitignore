@@ -1,0 +1,12 @@
+# Plaintext site source — NEVER commit this. The published site in docs/ is the
+# encrypted build produced by scripts/encrypt-site.js. Keep a backup of this
+# directory somewhere safe: once it is gone, the site cannot be edited or
+# re-encrypted, only viewed with the passphrase.
+site-src/
+
+# Never commit the passphrase
+.env
+*.key
+
+node_modules/
+.DS_Store
